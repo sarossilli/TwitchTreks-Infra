@@ -1,0 +1,51 @@
+version: 2.1
+
+executors:
+  terraform_executor:
+    docker:
+      - image: hashicorp/terraform:latest
+    working_directory: ~/repo
+
+jobs:
+  # Terraform Initialization
+  terraform_init:
+    executor: terraform_executor
+    steps:
+      - checkout
+      - run:
+          name: Install AWS CLI (if required)
+          command: |
+            sudo apt-get update && sudo apt-get install -y awscli
+      - run:
+          name: Terraform Init
+          command: terraform init
+
+  # Terraform Plan Job
+  terraform_plan:
+    executor: terraform_executor
+    steps:
+      - checkout
+      - run:
+          name: Terraform Plan
+          command: terraform plan
+
+  # Terraform Apply Job
+  terraform_apply:
+    executor: terraform_executor
+    steps:
+      - checkout
+      - run:
+          name: Terraform Apply
+          command: terraform apply -auto-approve
+
+workflows:
+  version: 2
+  deploy:
+    jobs:
+      - terraform_init
+      - terraform_plan:
+          requires:
+            - terraform_init
+      - terraform_apply:
+          requires:
+            - terraform_plan
