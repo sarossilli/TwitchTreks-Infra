@@ -1,51 +1,37 @@
 version: 2.1
 
-executors:
-  terraform_executor:
-    docker:
-      - image: hashicorp/terraform:latest
-    working_directory: ~/repo
-
 jobs:
-  # Job to initialize Terraform
-  terraform_init:
-    executor: terraform_executor
+  terraform:
+    docker:
+      - image: hashicorp/terraform:1.5.5
+    environment:
+      AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID
+      AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
     steps:
-      - checkout  # Check out the repository
+      - checkout
+
       - run:
-          name: Install AWS CLI
+          name: Install Dependencies
           command: |
-            sudo apt-get update && sudo apt-get install -y awscli
+            apk update && apk add --no-cache bash git openssh
+
       - run:
           name: Terraform Init
-          command: terraform init
+          command: terraform init -input=false
 
-  # Job to plan Terraform changes
-  terraform_plan:
-    executor: terraform_executor
-    steps:
-      - checkout
+      - run:
+          name: Terraform Validate
+          command: terraform validate
+
       - run:
           name: Terraform Plan
-          command: terraform plan
+          command: terraform plan -out=tfplan -input=false
 
-  # Job to apply Terraform changes (Deploy infrastructure)
-  terraform_apply:
-    executor: terraform_executor
-    steps:
-      - checkout
       - run:
           name: Terraform Apply
-          command: terraform apply -auto-approve
+          command: terraform apply -input=false -auto-approve tfplan
 
 workflows:
-  version: 2
-  deploy_infra:
+  terraform_deploy:
     jobs:
-      - terraform_init
-      - terraform_plan:
-          requires:
-            - terraform_init
-      - terraform_apply:
-          requires:
-            - terraform_plan
+      - terraform
